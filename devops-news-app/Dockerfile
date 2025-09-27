@@ -32,7 +32,7 @@ FROM nginx:alpine
 # Copiar archivos construidos desde la etapa anterior
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Configuración de nginx para SPA
+# Crear template de configuración de nginx
 RUN echo 'server { \
     listen 80; \
     server_name localhost; \
@@ -42,12 +42,25 @@ RUN echo 'server { \
     try_files $uri $uri/ /index.html; \
     } \
     location /api/ { \
-    proxy_pass http://api:3000/api/; \
+    proxy_pass ${API_URL}/api/; \
     proxy_set_header Host $host; \
     proxy_set_header X-Real-IP $remote_addr; \
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+    proxy_set_header X-Forwarded-Proto $scheme; \
     } \
-    }' > /etc/nginx/conf.d/default.conf
+    }' > /etc/nginx/conf.d/default.conf.template
+
+# Crear script de inicio que sustituye variables
+RUN echo '#!/bin/sh\n\
+    # Sustituir variables de entorno en la configuración\n\
+    envsubst "\$API_URL" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf\n\
+    # Iniciar nginx\n\
+    nginx -g "daemon off;"\n\
+    ' > /start-nginx.sh && chmod +x /start-nginx.sh
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Variable de entorno por defecto para desarrollo local
+ENV API_URL=http://localhost:3000
+
+CMD ["/start-nginx.sh"]

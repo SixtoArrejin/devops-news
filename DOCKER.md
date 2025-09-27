@@ -97,7 +97,8 @@ docker-compose up -d
    - **Runtime**: Nginx Alpine (para servir)
    - **Puerto**: 80
    - **Funcionalidad**: Multi-stage build que construye la aplicación React con Vite y la sirve con Nginx
-   - **Proxy**: Nginx hace proxy de `/api/*` al backend automáticamente
+   - **Proxy**: Nginx hace proxy de `/api/*` al backend usando variable `API_URL`
+   - **Configuración dinámica**: Nginx se configura al inicio usando `envsubst`
 
 2. **API (`devops-news-api`)**
 

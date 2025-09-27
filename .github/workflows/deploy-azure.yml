@@ -146,7 +146,9 @@ jobs:
             --registry-login-server ${{ secrets.ACR_LOGIN_SERVER }} \
             --registry-username ${{ secrets.ACR_USERNAME }} \
             --registry-password ${{ secrets.ACR_PASSWORD }} \
-            --restart always
+            --restart always \
+            --environment-variables \
+              API_URL=http://${API_HOST}:3000
 
       # ======================= RESUMEN FINAL =======================
       - name: Show deployment URLs
