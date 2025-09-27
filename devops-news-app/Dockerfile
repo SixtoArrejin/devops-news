@@ -56,7 +56,7 @@ RUN printf 'server {\n\
     }\n' > /etc/nginx/conf.d/default.conf.template
 
 # Crear script de inicio que sustituye variables
-RUN printf '#!/bin/sh\n# Sustituir variables de entorno en la configuración\nenvsubst "$API_URL" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf\n# Iniciar nginx\nexec nginx -g "daemon off;"\n' > /start-nginx.sh && \
+RUN printf '#!/bin/sh\n# Sustituir variables de entorno en la configuración\nenvsubst "\$API_URL" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf\n# Iniciar nginx\nexec nginx -g "daemon off;"\n' > /start-nginx.sh && \
     chmod +x /start-nginx.sh
 
 EXPOSE 80
