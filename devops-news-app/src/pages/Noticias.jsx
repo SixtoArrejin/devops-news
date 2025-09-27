@@ -17,34 +17,7 @@ import {
 } from '@chakra-ui/react';
 import { StarIcon } from '@chakra-ui/icons';
 import { useQuery } from 'react-query';
-
-// API function to fetch news
-const fetchNews = async () => {
-  const response = await fetch('http://localhost:3000/api/news');
-  if (!response.ok) {
-    throw new Error('Network response was not ok');
-  }
-  const result = await response.json();
-  // The API returns {success: true, data: [...]}
-  const data = result.data || result.articles || result.news || result;
-  // Ensure we return an array
-  return Array.isArray(data) ? data : [];
-};
-
-// API function to vote on an article
-const voteOnArticle = async (newsId, score) => {
-  const response = await fetch('http://localhost:3000/api/vote', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ newsId, score }),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to vote');
-  }
-  return response.json();
-};
+import { fetchNews, voteForNews } from '../api';
 
 // Component to render star rating for voting
 const StarRating = ({ onRate, disabled }) => {
@@ -81,7 +54,8 @@ const NewsCard = ({ article }) => {
 
     setIsVoting(true);
     try {
-      await voteOnArticle(article.id, score);
+      // Usar el ID de la noticia como newsId y pasar el score directamente (1-5)
+      await voteForNews(article.id, score);
       localStorage.setItem(`voted_${article.id}`, 'true');
       setHasVoted(true);
     } catch (error) {

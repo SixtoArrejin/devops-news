@@ -21,6 +21,7 @@ import {
 import { FiHome, FiMenu, FiUsers, FiMoreVertical, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 import { BiNetworkChart } from 'react-icons/bi';
 import { Link } from 'react-router-dom';
+import { adminRefreshNews, adminResetSystem } from '../api';
 
 const getNavItems = () => {
   const navItems = [
@@ -123,26 +124,17 @@ const AdminMenu = () => {
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/api/news/refresh', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      await adminRefreshNews();
 
-      if (response.ok) {
-        toast({
-          title: '✅ Noticias actualizadas',
-          description: 'Las noticias han sido refrescadas exitosamente',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-        // Recargar la página para mostrar las noticias nuevas
-        window.location.reload();
-      } else {
-        throw new Error('Error al refrescar noticias');
-      }
+      toast({
+        title: '✅ Noticias actualizadas',
+        description: 'Las noticias han sido refrescadas exitosamente',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      // Recargar la página para mostrar las noticias nuevas
+      window.location.reload();
     } catch (error) {
       toast({
         title: '❌ Error',
@@ -156,32 +148,25 @@ const AdminMenu = () => {
   };
 
   const handleReset = async () => {
-    if (!window.confirm('⚠️ ¿Estás seguro de que quieres resetear TODOS los datos? Esta acción no se puede deshacer.')) {
+    if (!window.confirm('⚠️ ¿Estás seguro de que quieres resetear COMPLETAMENTE el sistema? Esta acción elimina todas las noticias y votos y no se puede deshacer.')) {
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/api/admin/reset', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      await adminResetSystem();
 
-      if (response.ok) {
-        toast({
-          title: '🔄 Reset completado',
-          description: 'Todos los datos han sido eliminados',
-          status: 'info',
-          duration: 3000,
-          isClosable: true,
-        });
-        // Recargar la página
-        window.location.reload();
-      } else {
-        throw new Error('Error al resetear datos');
-      }
+      toast({
+        title: '🔄 Reset completado',
+        description: 'Sistema completamente reseteado: noticias y votos eliminados',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
+      // Limpiar localStorage también
+      localStorage.clear();
+      // Recargar la página
+      window.location.reload();
     } catch (error) {
       toast({
         title: '❌ Error',

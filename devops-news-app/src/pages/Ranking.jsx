@@ -17,19 +17,7 @@ import {
   Avatar,
 } from '@chakra-ui/react';
 import { useQuery } from 'react-query';
-
-// API function to fetch ranking
-const fetchRanking = async () => {
-  const response = await fetch('http://localhost:3000/api/ranking');
-  if (!response.ok) {
-    throw new Error('Network response was not ok');
-  }
-  const result = await response.json();
-  // The API returns {success: true, data: [...]}
-  const data = result.data || result.articles || result.news || result;
-  // Ensure we return an array
-  return Array.isArray(data) ? data : [];
-};
+import { fetchRanking } from '../api';
 
 // Component for ranking position badge
 const RankBadge = ({ position }) => {
