@@ -30,7 +30,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # Copiar archivos construidos desde la etapa anterior
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/build /usr/share/nginx/html
 
 # Configuración de nginx para SPA
 RUN echo 'server { \
