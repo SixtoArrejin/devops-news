@@ -11,8 +11,8 @@ export const serverConfig = {
 export const redisConfig = {
   host: process.env.REDIS_HOST,
   port: parseInt(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD,
-  username: process.env.REDIS_USERNAME || "default",
+  password: process.env.REDIS_PASSWORD || undefined, // undefined para Redis sin auth
+  username: process.env.REDIS_USERNAME || undefined,
   retryDelayOnFailover: 100,
   retryTimes: 3,
   maxRetriesPerRequest: 3,
@@ -27,10 +27,12 @@ export const newsApiConfig = {
 };
 
 // Validar que las variables críticas estén definidas
-const requiredEnvVars = ["REDIS_HOST", "REDIS_PASSWORD", "NEWS_API_KEY"];
+const requiredEnvVars = ["REDIS_HOST", "NEWS_API_KEY"];
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     throw new Error(`Variable de entorno requerida no encontrada: ${envVar}`);
   }
 }
+
+// REDIS_PASSWORD es opcional para Redis local sin auth
