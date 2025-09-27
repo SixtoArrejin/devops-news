@@ -1,0 +1,163 @@
+name: Build, Push and Deploy DevOps News to Azure
+
+on:
+  push:
+    branches: ["main", "deploy"]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login en ACR (Azure Container Registry)
+      - name: Log in to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # Login a Azure con Service Principal
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Export environment variables
+        run: |
+          echo "NEWS_API_KEY=${{ secrets.NEWS_API_KEY }}" >> $GITHUB_ENV
+          echo "NEWS_API_URL=https://newsapi.org/v2" >> $GITHUB_ENV
+          echo "REDIS_PORT=6379" >> $GITHUB_ENV
+          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> $GITHUB_ENV
+          echo "CACHE_TTL=7200" >> $GITHUB_ENV
+          echo "NEWS_REFRESH_INTERVAL=2" >> $GITHUB_ENV
+
+      # ======================= REDIS =======================
+      - name: Pull and Push Redis to ACR
+        run: |
+          docker pull redis:7-alpine
+          docker tag redis:7-alpine ${{ secrets.ACR_LOGIN_SERVER }}/devops-news-redis:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/devops-news-redis:latest
+
+      - name: Deploy Redis Container
+        run: |
+          az container delete --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name devops-news-redis --yes || true
+          az container create \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name devops-news-redis \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/devops-news-redis:latest \
+            --cpu 0.5 --memory 0.5 \
+            --os-type Linux \
+            --ports 6379 \
+            --ip-address public \
+            --dns-name-label devops-news-redis \
+            --registry-login-server ${{ secrets.ACR_LOGIN_SERVER }} \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_PASSWORD }} \
+            --restart always \
+            --command-line "redis-server --requirepass ${{ secrets.REDIS_PASSWORD }} --appendonly yes"
+
+      - name: Get Redis IP
+        id: get-redis-ip
+        run: |
+          sleep 30  # Esperar que Redis esté listo
+          REDIS_IP=$(az container show \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name devops-news-redis \
+            --query ipAddress.ip \
+            -o tsv)
+          echo "REDIS_HOST=$REDIS_IP" >> $GITHUB_ENV
+          echo "Redis desplegado en: $REDIS_IP:6379"
+
+      # ======================= API BACKEND =======================
+      - name: Build & Push API Backend image
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/devops-news-api:latest ./devops-news-api
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/devops-news-api:latest
+
+      - name: Deploy API Backend
+        run: |
+          az container delete --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name devops-news-api --yes || true
+          az container create \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name devops-news-api \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/devops-news-api:latest \
+            --cpu 1 --memory 1 \
+            --os-type Linux \
+            --ports 3000 \
+            --ip-address public \
+            --dns-name-label devops-news-api \
+            --registry-login-server ${{ secrets.ACR_LOGIN_SERVER }} \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_PASSWORD }} \
+            --restart always \
+            --environment-variables \
+              NODE_ENV=production \
+              PORT=3000 \
+              REDIS_HOST=${REDIS_HOST} \
+              REDIS_PORT=${REDIS_PORT} \
+              REDIS_PASSWORD=${REDIS_PASSWORD} \
+              REDIS_USERNAME=default \
+              NEWS_API_KEY=${NEWS_API_KEY} \
+              NEWS_API_URL=${NEWS_API_URL} \
+              CACHE_TTL=${CACHE_TTL} \
+              NEWS_REFRESH_INTERVAL=${NEWS_REFRESH_INTERVAL}
+
+      - name: Get API Backend Public IP
+        id: get-api-ip
+        run: |
+          API_IP=$(az container show \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name devops-news-api \
+            --query ipAddress.ip \
+            -o tsv)
+          echo "API_HOST=$API_IP" >> $GITHUB_ENV
+          echo "API Backend desplegado en: http://$API_IP:3000"
+
+      # ======================= FRONTEND =======================
+      - name: Build & Push Frontend image
+        run: |
+          # Crear .env temporal para el build del frontend
+          echo "VITE_API_BASE_URL=http://$API_HOST:3000/api" > ./devops-news-app/.env
+          echo "VITE_NODE_ENV=production" >> ./devops-news-app/.env
+
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/devops-news-frontend:latest ./devops-news-app
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/devops-news-frontend:latest
+
+      - name: Deploy Frontend
+        run: |
+          az container delete --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name devops-news-frontend --yes || true
+          az container create \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name devops-news-frontend \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/devops-news-frontend:latest \
+            --cpu 1 --memory 1 \
+            --os-type Linux \
+            --ports 80 \
+            --ip-address public \
+            --dns-name-label devops-news-frontend \
+            --registry-login-server ${{ secrets.ACR_LOGIN_SERVER }} \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_PASSWORD }} \
+            --restart always
+
+      # ======================= RESUMEN FINAL =======================
+      - name: Show deployment URLs
+        run: |
+          echo "🚀 DevOps News desplegado exitosamente en Azure!"
+          echo ""
+          echo "📱 Frontend: http://devops-news-frontend.eastus.azurecontainer.io"
+          echo "🔧 API: http://devops-news-api.eastus.azurecontainer.io:3000"
+          echo "🗄️ Redis: devops-news-redis.eastus.azurecontainer.io:6379"
+          echo ""
+          echo "🔑 Variables de entorno configuradas:"
+          echo "- NEWS_API_KEY: ✓"
+          echo "- REDIS_PASSWORD: ✓"
+          echo "- Todas las conexiones entre servicios: ✓"

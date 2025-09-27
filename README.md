@@ -80,9 +80,16 @@ devops-news/
    - Animaciones fluidas y micro-interacciones
 
 5. **Gestión de Estado Avanzada**
+
    - React Query para caché y sincronización
    - Actualización automática de datos
    - Manejo de errores robusto
+
+6. **🚀 Deployment Automatizado**
+   - GitHub Actions para CI/CD
+   - Docker multi-stage builds
+   - Azure Container Registry + Container Instances
+   - Infraestructura como código
 
 ### 🎨 Páginas y Componentes
 
@@ -117,49 +124,62 @@ devops-news/
 
 ## 🚀 Cómo Ejecutar el Proyecto
 
-### Prerrequisitos
-
-- Node.js (v16 o superior)
-- npm o yarn
-- Cuenta en NewsAPI (API key gratuita)
-- Cuenta en Redis Cloud (gratuita)
-
-### 1. Configurar API Backend
+### 🐳 Opción 1: Docker (Recomendado)
 
 ```bash
+# Configurar variables de entorno en .env
+echo "NEWS_API_KEY=tu-key-de-newsapi" > .env
+
+# Ejecutar todos los servicios
+docker-compose up -d --build
+
+# Acceder a la aplicación
+# Frontend: http://localhost:80
+# API: http://localhost:3000
+```
+
+Ver [DOCKER.md](./DOCKER.md) para más detalles.
+
+### ☁️ Opción 2: Deploy en Azure
+
+```bash
+# Configurar Azure (una sola vez)
+./scripts/setup-azure.ps1  # Windows
+./scripts/setup-azure.sh   # Linux/Mac
+
+# Push a main -> Deploy automático via GitHub Actions
+git push origin main
+```
+
+Ver [DEPLOYMENT.md](./DEPLOYMENT.md) para configuración completa.
+
+### 💻 Opción 3: Desarrollo Local
+
+#### Prerrequisitos
+
+- Node.js (v20 o superior)
+- npm
+- Cuenta en [NewsAPI](https://newsapi.org/) (gratuita)
+
+#### Pasos
+
+```bash
+# 1. Backend
 cd devops-news-api
 npm install
+# Configurar .env con NEWS_API_KEY
+npm run dev
 
-# Configurar variables de entorno
-# Crear archivo .env con:
-# NEWSAPI_KEY=tu_api_key_de_newsapi
-# REDIS_URL=redis://default:password@host:port
-```
-
-### 2. Configurar Frontend
-
-```bash
-cd frontend
+# 2. Frontend (nueva terminal)
+cd devops-news-app
 npm install
-```
-
-### 3. Ejecutar en Desarrollo
-
-```bash
-# Terminal 1 - API Backend
-cd devops-news-api
-npm run dev
-
-# Terminal 2 - Frontend
-cd frontend
 npm run dev
 ```
 
-### 4. Acceder a la Aplicación
+#### URLs de desarrollo
 
 - **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:3000
-- **Estado del servidor**: http://localhost:3000/status
+- **API**: http://localhost:3000
 
 ## 📊 Estado Actual del Proyecto
 
