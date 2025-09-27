@@ -29,34 +29,35 @@ RUN npm run build
 # Etapa 2: Servidor con nginx
 FROM nginx:alpine
 
+# Instalar gettext para envsubst
+RUN apk add --no-cache gettext
+
 # Copiar archivos construidos desde la etapa anterior
 COPY --from=builder /app/build /usr/share/nginx/html
 
 # Crear template de configuración de nginx
-RUN echo 'server { \
-    listen 80; \
-    server_name localhost; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { \
-    try_files $uri $uri/ /index.html; \
-    } \
-    location /api/ { \
-    proxy_pass ${API_URL}/api/; \
-    proxy_set_header Host $host; \
-    proxy_set_header X-Real-IP $remote_addr; \
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
-    proxy_set_header X-Forwarded-Proto $scheme; \
-    } \
-    }' > /etc/nginx/conf.d/default.conf.template
+RUN printf 'server {\n\
+    listen 80;\n\
+    server_name localhost;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+    \n\
+    location / {\n\
+    try_files $uri $uri/ /index.html;\n\
+    }\n\
+    \n\
+    location /api/ {\n\
+    proxy_pass ${API_URL}/api/;\n\
+    proxy_set_header Host $host;\n\
+    proxy_set_header X-Real-IP $remote_addr;\n\
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
+    proxy_set_header X-Forwarded-Proto $scheme;\n\
+    }\n\
+    }\n' > /etc/nginx/conf.d/default.conf.template
 
 # Crear script de inicio que sustituye variables
-RUN echo '#!/bin/sh\n\
-    # Sustituir variables de entorno en la configuración\n\
-    envsubst "\$API_URL" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf\n\
-    # Iniciar nginx\n\
-    nginx -g "daemon off;"\n\
-    ' > /start-nginx.sh && chmod +x /start-nginx.sh
+RUN printf '#!/bin/sh\n# Sustituir variables de entorno en la configuración\nenvsubst "$API_URL" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf\n# Iniciar nginx\nexec nginx -g "daemon off;"\n' > /start-nginx.sh && \
+    chmod +x /start-nginx.sh
 
 EXPOSE 80
 
